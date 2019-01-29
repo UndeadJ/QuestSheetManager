@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * Version 0.5
@@ -66,6 +67,12 @@ public class QuestSheetManager {
 	private static Connection connection;
 	private static StringBuilder tempSB = new StringBuilder(3000);
 
+	private final static String ESCAPING_THE_BACKSLASH = "\\";
+	private final static String FILE_EXTENSION_JAVA = ".java";
+	private final static String FILE_EXTENSION_CLASS = ".class";
+	private final static String FILE_EXTENSION_JRXML = ".jrxml";
+	private final static String FILE_EXTENSION_JASPER = ".jasper";
+	
 	
 	public QuestSheetManager(){		
 		fieldDataBinging();
