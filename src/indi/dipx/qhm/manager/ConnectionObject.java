@@ -7,8 +7,7 @@ public class ConnectionObject {
 	
 	private  static Connection conn = null;
 	
-	public  Connection getConnection() {
-		System.out.println("�s�u��DB...");
+	public  Connection getConnection() {		
 		if (null == conn){
 			initConnection();
 		}		

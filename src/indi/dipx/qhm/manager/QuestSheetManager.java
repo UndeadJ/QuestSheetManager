@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
@@ -30,10 +31,13 @@ import org.apache.commons.lang.StringUtils;
 public class QuestSheetManager {
 
 	// 需求單編號
-	private static String questionSheetNo = "CF1080123001";
+	private String questionSheetNo = "CF1080123001";
 	
 	// 上傳(CVS)日期
-	private static String cvsDate = "1080124";
+	private String cvsDate = "1080124";	
+	
+	//檔案複製目的地
+	private String copyDest = "D:\\";
 	
 	//CF專案目錄	
 	private String PROJECT_PATH;	
@@ -55,17 +59,16 @@ public class QuestSheetManager {
 	private String BOFT_G2G;
 
 	
-	private final static SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-	private static ArrayList<String> pwSB = new ArrayList<String>();
-	private static ArrayList<String> cfSB = new ArrayList<String>();
-	private static ArrayList<String> schedulerSB = new ArrayList<String>();
-	private static ArrayList<String> g2gSB = new ArrayList<String>();
+	//private 
+	private ArrayList<String> pwArrayList = new ArrayList<String>();
+	private ArrayList<String> cfArrayList = new ArrayList<String>();
+	private ArrayList<String> schedulerArrayList = new ArrayList<String>();
+	private ArrayList<String> g2gArrayList = new ArrayList<String>();
 	
-	private static ArrayList<String> daoSB = new ArrayList<String>();
+	private ArrayList<String> daoArrayList = new ArrayList<String>();
 
-	private static int questionSheetId;
-	private static Connection connection;
-	private static StringBuilder tempSB = new StringBuilder(3000);
+	private int questionSheetId;	
+	private StringBuilder tempSB = new StringBuilder(3000);
 
 	private final static String ESCAPING_THE_BACKSLASH = "\\";
 	private final static String FILE_EXTENSION_JAVA = ".java";
@@ -73,10 +76,7 @@ public class QuestSheetManager {
 	private final static String FILE_EXTENSION_JRXML = ".jrxml";
 	private final static String FILE_EXTENSION_JASPER = ".jasper";
 	
-	
-	public QuestSheetManager(){		
-		fieldDataBinging();
-	}
+	public QuestSheetManager(){}
 	
 	public static void main(String[] args) throws SQLException,
 			ClassNotFoundException {
@@ -84,15 +84,18 @@ public class QuestSheetManager {
 		try {
 			System.out.println("Start...");
 			
-			connection = ConnectionObject.getInstance().getConnection();
-			
 			QuestSheetManager manager = new QuestSheetManager();
 			
+			manager.initConfiguration();
+			
 			manager.connNetworkFolder();
-			manager.initQuestionSheetId();
+			
+			manager.loadQuestionSheetId();
 			
 			manager.parserPathTxt();
-			manager.insertQuestSheet();			
+			
+			manager.insertQuestSheet();
+			
 			//manager.copyFile();
 			
 			System.out.println("Done !!");
@@ -101,9 +104,12 @@ public class QuestSheetManager {
 		}
 
 	}
-
 	
-	private void fieldDataBinging() {
+
+	/**
+	 * 	初始組態配置
+	 */
+	private void initConfiguration() {
 		PROJECT_PATH = PropertiesManager.getSingletonInstance().getProjectPath();
 		G2G_PROJECT_PATH = PropertiesManager.getSingletonInstance().getG2GProjectPath();
 		
@@ -127,10 +133,10 @@ public class QuestSheetManager {
 			//String password = PropertiesManager.getSingletonInstance().get31Password();
 			
 			String command = "net use */delete /y";
-			Process child = Runtime.getRuntime().exec(command);
+			Runtime.getRuntime().exec(command);
 			Thread.sleep(300);
 			String command1 = "net.exe use F: \\\\172.21.1.31\\d$\\康大\\國貿局共用資料  /user:kduser !QAZ2wsx!QAZ2wsx";
-		    Process child1 = Runtime.getRuntime().exec(command1);
+		    Runtime.getRuntime().exec(command1);
 		    Thread.sleep(500);
 			
 	        //String command = "C:\\Windows\\system32\\net.exe use " +RELEASE_CF+getServerDirectoryDate()+ " /user:" + userName + " " + password;
@@ -146,26 +152,14 @@ public class QuestSheetManager {
 		}
 		
 	}
-
-	/**
-	 * 取消連線到31
-	 */
-	private void disConnNetworkFolder() {
-		try {
-			System.out.println("DisConnection Network Folder (31)...");
-			String command = "net use */delete /y";
-			Process child = Runtime.getRuntime().exec(command);
-			
-	    } catch (IOException e) {
-	    	e.printStackTrace();
-	    } 		
-	}
 	
-	private  void initQuestionSheetId() throws SQLException {
-		//for icp
-		//ICPconnection();
-		
-		Statement stmt = connection.createStatement();
+	
+	/**
+	 * 	取得QuestionSheetId
+	 * 	@throws SQLException
+	 */
+	private  void loadQuestionSheetId() throws SQLException {
+		Statement stmt = getConnection().createStatement();
 		String sql = "select id from questionSheet where questionSheetNo = '"
 		+ questionSheetNo + "'";
 
@@ -174,7 +168,12 @@ public class QuestSheetManager {
 			questionSheetId = rs.getInt("id");
 		}
 	}
+	
 
+	/**
+	 *	 分析上傳程式之檔案路徑 - Path.txt
+	 * 	@throws IOException
+	 */
 	private  void parserPathTxt() throws IOException {
 		System.out.println("分析上傳程式之檔案路徑(Path.txt)");
 		File file = new File("path.txt");
@@ -189,20 +188,25 @@ public class QuestSheetManager {
 
 		for (String s2 : tempCol) {
 			if (s2.startsWith("boft_cf")) {
-				cfSB.add(s2);
+				cfArrayList.add(s2);
 			} else if (s2.startsWith("boft_pw")) {
-				pwSB.add(s2);
+				pwArrayList.add(s2);
 			} else if (s2.startsWith("boft_scheduler")) {
-				schedulerSB.add(s2);
+				schedulerArrayList.add(s2);
 			} else if (s2.startsWith("boft.cf.sql2java.dao")) {
-				daoSB.add(s2);
+				daoArrayList.add(s2);
 			} else if (s2.startsWith("G2G")) {
-				g2gSB.add(s2);
+				g2gArrayList.add(s2);
 			}
 
 		}
 	}
 
+	/**
+	 * 	寫入codeList
+	 * 	@throws SQLException
+	 * 	@throws ClassNotFoundException
+	 */
 	private  void insertQuestSheet() throws SQLException,
 			ClassNotFoundException {
 		PreparedStatement pstmt = null;
@@ -216,7 +220,7 @@ public class QuestSheetManager {
 			sql = new StringBuffer("INSERT INTO codeList ");
 			sql.append(" VALUES (?,?,?,?,?,?,?,?,?)");
 
-			pstmt = connection.prepareStatement(sql.toString());
+			pstmt = getConnection().prepareStatement(sql.toString());
 			
 			insertDaoPath(pstmt);			
 			insertPWPath(pstmt);
@@ -229,7 +233,7 @@ public class QuestSheetManager {
 		} catch (InterruptedException e) {			
 			e.printStackTrace();
 		} finally {
-			connection.close();
+			getConnection().close();
 		}
 
 	}
@@ -239,7 +243,7 @@ public class QuestSheetManager {
 		String fileName = "";
 		String path = "";
 		String cvsNo = "";
-		for (String s : g2gSB) {
+		for (String s : g2gArrayList) {
 			int index = s.lastIndexOf("/");
 			int spIndex = s.lastIndexOf(" ");
 
@@ -266,7 +270,7 @@ public class QuestSheetManager {
 		String fileName = "";
 		String path = "";
 		String cvsNo = "";
-		for (String s : daoSB) {
+		for (String s : daoArrayList) {
 			int index = s.lastIndexOf("/");
 			int spIndex = s.lastIndexOf(" ");
 
@@ -294,7 +298,7 @@ public class QuestSheetManager {
 		String fileName = "";
 		String path = "";
 		String cvsNo = "";
-		for (String s : schedulerSB) {
+		for (String s : schedulerArrayList) {
 			int index = s.lastIndexOf("/");
 			int spIndex = s.lastIndexOf(" ");
 
@@ -322,7 +326,7 @@ public class QuestSheetManager {
 		String fileName = "";
 		String path = "";
 		String cvsNo = "";
-		for (String s : pwSB) {
+		for (String s : pwArrayList) {
 			int index = s.lastIndexOf("/");
 			int spIndex = s.lastIndexOf(" ");
 
@@ -350,7 +354,7 @@ public class QuestSheetManager {
 		String fileName = "";
 		String path = "";
 		String cvsNo = "";
-		for (String s : cfSB) {
+		for (String s : cfArrayList) {
 			int index = s.lastIndexOf("/");
 			int spIndex = s.lastIndexOf(" ");
 
@@ -374,23 +378,26 @@ public class QuestSheetManager {
 	}
 
 	private  void copyFile() {
+		//設定目的地
+		//String copyDest = 
+		
 		//copyPW
 		StringBuilder fileName =  new StringBuilder();
 		StringBuilder srcPath = new StringBuilder();
 		StringBuilder classPath = new StringBuilder();
-		StringBuilder cvsNo = new StringBuilder();
-		for (String s : cfSB) {
-			int index = s.lastIndexOf("/");
-			int spIndex = s.lastIndexOf(" ");
+		
+		for (String s : cfArrayList) {
 			fileName.delete(0, fileName.length());
 			srcPath.delete(0,srcPath.length());
-			cvsNo.delete(0,cvsNo.length());
 			classPath.delete(0,classPath.length());
+			
+			int index = s.lastIndexOf("/");
+			int spIndex = s.lastIndexOf(" ");
 			
 			fileName.append(s.substring(index + 1, spIndex).trim());
 			srcPath.append(s.substring(0, index).replace('/', '\\'));
 
-			cvsNo.append(s.substring(spIndex + 1));
+		
 			try {
 				// Project位置 ,  project之後
 				// ex. boft_cf\WEB-INF\src\java\boft\cf\domain\cf3\pt316
@@ -401,31 +408,26 @@ public class QuestSheetManager {
 				
 				FileUtils.copyFile(source, dest);
 				
+				//換到classes目錄
+				classPath.append(srcPath.toString().replaceAll("src\\\\java", "classes"));
+				
 				if (fileName.indexOf(".java") > 0) {
-
 					fileName.replace(0, fileName.length(), StringUtils.replace(fileName.toString(), 
 							FILE_EXTENSION_JAVA, FILE_EXTENSION_CLASS));
-					
-					classPath.append(srcPath.toString().replaceAll("src\\\\java", "classes"));				
-					source = new File("D:\\" + classPath.toString() + ESCAPING_THE_BACKSLASH + fileName.toString()); // project之後
-					dest = new File("E:\\" + classPath.toString() + ESCAPING_THE_BACKSLASH + fileName.toString());
-					FileUtils.copyFile(source, dest);
-				}else if (fileName.indexOf(".jrxml") > 0) {
-					
+				}else if (fileName.indexOf(".jrxml") > 0) {					
 					fileName.replace(0, fileName.length(), StringUtils.replace(fileName.toString(), 
-							FILE_EXTENSION_JRXML, FILE_EXTENSION_JASPER));					
-					classPath.append(srcPath.toString().replaceAll("src\\\\java", "classes"));				
-					source = new File("D:\\" + classPath.toString() + ESCAPING_THE_BACKSLASH + fileName.toString()); // project之後
-					dest = new File("E:\\" + classPath.toString() + ESCAPING_THE_BACKSLASH + fileName.toString());
-					FileUtils.copyFile(source, dest);
+							FILE_EXTENSION_JRXML, FILE_EXTENSION_JASPER));
 				}
-			
-			  
+				
+				source = new File("D:\\" + classPath.toString() + ESCAPING_THE_BACKSLASH + fileName.toString());
+				dest = new File("E:\\" + classPath.toString() + ESCAPING_THE_BACKSLASH + fileName.toString());
+				FileUtils.copyFile(source, dest);
 			} catch (IOException e) {
 			    e.printStackTrace();
 			}
 		}
 	}	
+	
 	
 	/**
 	 * 上傳的檔案大小
@@ -435,7 +437,7 @@ public class QuestSheetManager {
 	 * @return
 	 */
 	private  String getCommitFileSize(String local, String path, String fileName) {		
-		File file = new File(local+"\\"+path +"\\"+ fileName);
+		File file = new File(local+ESCAPING_THE_BACKSLASH+path+ESCAPING_THE_BACKSLASH+fileName);
 		DecimalFormat df=new DecimalFormat("#.##");
 		return df.format(((float)file.length())/1000)+"kb";
 	}
@@ -452,25 +454,22 @@ public class QuestSheetManager {
 	private  String getServerFileLastModified(String server, String path, String fileName) 
 			throws InterruptedException{
 		Thread.sleep(50);
-		int index = path.indexOf("\\");		
+		int index = path.indexOf(ESCAPING_THE_BACKSLASH);		
 		String fixPath = path.substring(index);
 		
 		if (fixPath.indexOf("docs\\definition")!=-1 && server.indexOf("G2G") != -1){
 			fixPath = fixPath.substring(5);
 		}
-	
+		File file = new File(server+getServerDirectoryDate()+ESCAPING_THE_BACKSLASH+fixPath +ESCAPING_THE_BACKSLASH+ fileName);
 		
-		File file = new File(server+getServerDirectoryDate()+"\\"+fixPath +"\\"+ fileName);
-		
-		Calendar c = Calendar.getInstance();
-		c.setTimeInMillis(file.lastModified());
-		
-		/*     
-		System.out.println(" 上次修改時間為："
-		            + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getTime()));
-		*/
+		/*
+		 * Calendar c = Calendar.getInstance(); c.setTimeInMillis(file.lastModified());
+		 * System.out.println(" 上次修改時間為：" + new
+		 * SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getTime()));
+		 */
 		
 		StringBuilder sb = new StringBuilder();
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
 		sb.append(sdf.format(file.lastModified()));
 		
 		String year = String.valueOf(Integer.parseInt(sb.substring(0,4))-1911);
@@ -480,6 +479,7 @@ public class QuestSheetManager {
 		if (year.length() == 2){
 			//year = "0"+year;
 		}
+		
 	    return year+month+date;
 	}
 	
@@ -495,14 +495,14 @@ public class QuestSheetManager {
 	private  String getServerFileLastModFileSize(String server, String path, String fileName) 
 			throws InterruptedException{
 		Thread.sleep(50);
-		int index = path.indexOf("\\");		
+		int index = path.indexOf(ESCAPING_THE_BACKSLASH);		
 		String fixPath = path.substring(index);
 		
 		if (fixPath.indexOf("docs\\definition")!=-1 && server.indexOf("G2G") != -1){
 			fixPath = fixPath.substring(5);
 		}
 		
-		File file = new File(server+getServerDirectoryDate()+"\\"+fixPath +"\\"+ fileName);
+		File file = new File(server+getServerDirectoryDate()+ESCAPING_THE_BACKSLASH+fixPath +ESCAPING_THE_BACKSLASH+ fileName);
 		DecimalFormat df=new DecimalFormat("#.##");
 		return df.format(((float)file.length())/1000)+"kb";
 		
@@ -520,4 +520,12 @@ public class QuestSheetManager {
 	    return "("+s.format(new Date(cal.getTimeInMillis()))+")";
 	}
 	
+	
+	/**
+	 * Connection
+	 * @return
+	 */
+	private final Connection getConnection() {		
+		return ConnectionObject.getInstance().getConnection();
+	}
 }
