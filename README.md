@@ -15,7 +15,7 @@ private String cvsDate = "1080124"; </pre></code>
   
 ***
 #### 運作方式
-程式<strong>commint</strong>後，利用<strong>change-log</strong>取得檔案路徑、版號並貼到<strong>path.txt</strong><br/>
+程式<strong>commit</strong>後，利用<strong>change-log</strong>取得檔案路徑、版號並貼到<strong>path.txt</strong><br/>
 之後確認<strong>QuestSheetManager</strong>及<strong>config.properties</strong>內之設定<br/>
 確認無誤後執行<strong>QuestSheetManager</strong>
 
