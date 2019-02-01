@@ -1,7 +1,7 @@
 # QuestSheetManager 【專案程式打包工具】
 #### 請需先於【問題單管理系統】建立需求單
 
-1.請依自身本機專案放置位置，修改 <strong>resource/config.properties</strong> 中之 <strong>PROJECT_PATH</strong> <br />
+1.依自身本機專案放置位置，修改 <strong>resource/config.properties</strong> 中之 <strong>PROJECT_PATH</strong> <br />
 
 2.依需求單修改<strong>QuestSheetManager</strong> 中的： <br />
 <pre><code>// 需求單編號 <br />
