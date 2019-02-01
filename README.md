@@ -10,7 +10,7 @@ QuestSheetManager
 private String questionSheetNo = "CF1080123001"; <br /> <br />
 
 // 上傳(CVS)日期 <br />
-private String cvsDate = "1080124"; </pre></code><br /><br />
+private String cvsDate = "1080124"; </pre></code><br />
 
 3.如果只測試檔案copy，不做DB寫入，修改QuestSheetManager.java 中的： <br />
   <pre><code>private static boolean onlyCopyFileTest = true; </pre></code><br />
