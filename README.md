@@ -3,7 +3,7 @@ QuestSheetManager
 
 【專案程式打包工具】
 
-1.請依自身本機專案放置位置，修改 resource/config.properties 中之 PROJECT_PATH <br />
+1.請依自身本機專案放置位置，修改 *resource/config.properties* 中之 *PROJECT_PATH* <br />
 
 2.依需求單修改QuestSheetManager.java 中的： <br />
 <pre><code>// 需求單編號 <br />
