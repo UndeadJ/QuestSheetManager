@@ -11,8 +11,7 @@ private String questionSheetNo = "CF1080123001"; <br /> <br />
 private String cvsDate = "1080124"; </pre></code>
 
 3.如果只測試檔案copy，不做DB寫入，請修改<strong>QuestSheetManager</strong> 中的： <br />
-  <pre><code>private static boolean onlyCopyFileTest = true; </pre></code><br />
-	
+  <pre><code>private static boolean onlyCopyFileTest = true; </pre></code><br />	
 ***
 #### 運作方式
 程式<strong>commint</strong>後，利用<strong>change-log</strong>取得檔案路徑、版號並貼到<strong>path.txt</strong><br/>
