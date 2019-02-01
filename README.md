@@ -13,3 +13,8 @@ private String cvsDate = "1080124"; </pre></code>
 3.如果只測試檔案copy，不做DB寫入，請修改<strong>QuestSheetManager</strong> 中的： <br />
   <pre><code>private static boolean onlyCopyFileTest = true; </pre></code><br />
 	
+***
+##### 運作方式
+程式commint後，利用change-log取得檔案路徑及版號<br/>
+貼到path.txt檔後，確認好<strong>QuestSheetManager</strong>及<strong>config.properties</strong>內之設定<br/>
+執行即可
