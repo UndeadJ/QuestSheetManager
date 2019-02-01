@@ -30,17 +30,20 @@ import org.apache.commons.lang.StringUtils;
  */
 public class QuestSheetManager {
 
+	//是否只測試檔案copy，不做DB寫入
+	private static boolean onlyCopyFileTest = true;
+	
 	// 需求單編號
 	private String questionSheetNo = "CF1080123001";
-	
+
 	// 上傳(CVS)日期
 	private String cvsDate = "1080124";	
 	
-	//檔案複製目的地
-	private String copyDest = "D:\\";
+	//檔案複製目的地位置 (磁碟機代號)
+	private String DISK_DIRVER_FOR_COPY = "D:";
 	
 	//CF專案目錄	
-	private String PROJECT_PATH;	
+	private static String PROJECT_PATH;	
 	
 	//GJZZ - G2G專案目錄	
 	private String G2G_PROJECT_PATH;
@@ -57,9 +60,10 @@ public class QuestSheetManager {
 	
 	//正式機GJZZ - G2G路徑
 	private String BOFT_G2G;
-
 	
-	//private 
+	//檔案複製目的地位置
+	private String copyDestination;
+
 	private ArrayList<String> pwArrayList = new ArrayList<String>();
 	private ArrayList<String> cfArrayList = new ArrayList<String>();
 	private ArrayList<String> schedulerArrayList = new ArrayList<String>();
@@ -88,15 +92,19 @@ public class QuestSheetManager {
 			
 			manager.initConfiguration();
 			
-			manager.connNetworkFolder();
+			manager.initFileCopyDestination(null);
 			
-			manager.loadQuestionSheetId();
-			
-			manager.parserPathTxt();
-			
-			manager.insertQuestSheet();
-			
-			//manager.copyFile();
+			//只測檔案複製
+			if (onlyCopyFileTest) {							
+				manager.parserPathTxt();
+				manager.copyAllFile();				
+			}else {
+				manager.connNetworkFolder();				
+				manager.loadQuestionSheetId();				
+				manager.parserPathTxt();				
+				manager.insertQuestSheet();				
+				manager.copyAllFile();
+			}	
 			
 			System.out.println("Done !!");
 		} catch (Exception e) {
@@ -105,6 +113,33 @@ public class QuestSheetManager {
 
 	}
 	
+
+	/**
+	 * 設定檔案複製目的地 ，將在目的地目錄下，建立需求單編號(已重組過)目錄
+	 * @param copyDestPath 目的地目錄路徑 , null或空值，則使用預設值
+	 */
+	private void initFileCopyDestination(String copyDestPath) {
+		StringBuilder destDirName = new StringBuilder();
+		
+		destDirName.append(getQuestionSheetNo().substring(2,9))
+				   .append("-")
+				   .append(Integer.parseInt(getQuestionSheetNo().substring(9)));
+			
+		String destPath = DISK_DIRVER_FOR_COPY;
+		if (null!=copyDestPath && !"".equals(copyDestPath)) {			
+			destPath = copyDestPath;
+		}
+		
+		
+		if (destPath.endsWith("\\")) {
+			destPath = destPath + destDirName;
+		}else {
+			destPath = destPath + "\\" +destDirName;
+		}
+		
+		this.setCopyDestination(destPath);
+		
+	}
 
 	/**
 	 * 	初始組態配置
@@ -377,58 +412,244 @@ public class QuestSheetManager {
 
 	}
 
-	private  void copyFile() {
-		//設定目的地
-		//String copyDest = 
-		
-		//copyPW
-		StringBuilder fileName =  new StringBuilder();
+	/**
+	 * 複製檔案
+	 */
+	private  void copyAllFile() {
+		copyPwFile();
+		copyCfFile();
+		copySchedulerFile();
+		//copyG2GFile();
+	}	
+
+	/**
+	 * copy boft_scheduler File(need Refactor)
+	 */
+	private void copySchedulerFile() {
+		StringBuilder fileName = new StringBuilder();
 		StringBuilder srcPath = new StringBuilder();
 		StringBuilder classPath = new StringBuilder();
-		
-		for (String s : cfArrayList) {
+
+		StringBuilder tempSb = new StringBuilder();
+
+		for (String s : schedulerArrayList) {
 			fileName.delete(0, fileName.length());
-			srcPath.delete(0,srcPath.length());
-			classPath.delete(0,classPath.length());
-			
+			srcPath.delete(0, srcPath.length());
+			classPath.delete(0, classPath.length());
+
 			int index = s.lastIndexOf("/");
 			int spIndex = s.lastIndexOf(" ");
-			
+
 			fileName.append(s.substring(index + 1, spIndex).trim());
 			srcPath.append(s.substring(0, index).replace('/', '\\'));
 
-		
 			try {
-				// Project位置 ,  project之後
-				// ex. boft_cf\WEB-INF\src\java\boft\cf\domain\cf3\pt316
-				File source = new File("D:\\" + srcPath.toString() + ESCAPING_THE_BACKSLASH + fileName.toString()); // 
-				
-				//目地的
-				File dest = new File("E:\\" + srcPath.toString() + ESCAPING_THE_BACKSLASH + fileName.toString());
-				
+				File source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + srcPath.toString()
+						+ ESCAPING_THE_BACKSLASH + fileName.toString());
+
+				// 目地的
+				File dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + srcPath.toString()
+						+ ESCAPING_THE_BACKSLASH + fileName.toString());
+
 				FileUtils.copyFile(source, dest);
-				
-				//換到classes目錄
-				classPath.append(srcPath.toString().replaceAll("src\\\\java", "classes"));
-				
-				if (fileName.indexOf(".java") > 0) {
-					fileName.replace(0, fileName.length(), StringUtils.replace(fileName.toString(), 
-							FILE_EXTENSION_JAVA, FILE_EXTENSION_CLASS));
-				}else if (fileName.indexOf(".jrxml") > 0) {					
-					fileName.replace(0, fileName.length(), StringUtils.replace(fileName.toString(), 
-							FILE_EXTENSION_JRXML, FILE_EXTENSION_JASPER));
+
+				if ((fileName.indexOf(".jrxml") > 0)) {
+					tempSb.delete(0, tempSb.length());
+					tempSb.append(fileName);
+					tempSb.replace(0, tempSb.length(),
+							StringUtils.replace(tempSb.toString(), FILE_EXTENSION_JRXML, FILE_EXTENSION_JASPER));
+
+					source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + srcPath.toString()
+							+ ESCAPING_THE_BACKSLASH + tempSb.toString());
+					dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + srcPath.toString()
+							+ ESCAPING_THE_BACKSLASH + tempSb.toString());
+
+					FileUtils.copyFile(source, dest);
 				}
-				
-				source = new File("D:\\" + classPath.toString() + ESCAPING_THE_BACKSLASH + fileName.toString());
-				dest = new File("E:\\" + classPath.toString() + ESCAPING_THE_BACKSLASH + fileName.toString());
-				FileUtils.copyFile(source, dest);
+
+				if ((fileName.indexOf(".java") > 0) || (fileName.indexOf(".jrxml") > 0)) {
+					// 換到classes目錄
+					classPath.append(srcPath.toString().replaceAll("src\\\\java", "classes"));
+
+					if (fileName.indexOf(".java") > 0) {
+						fileName.replace(0, fileName.length(),
+								StringUtils.replace(fileName.toString(), FILE_EXTENSION_JAVA, FILE_EXTENSION_CLASS));
+					} else if (fileName.indexOf(".jrxml") > 0) {
+						source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + classPath.toString()
+								+ ESCAPING_THE_BACKSLASH + fileName.toString());
+						dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + classPath.toString()
+								+ ESCAPING_THE_BACKSLASH + fileName.toString());
+						FileUtils.copyFile(source, dest);
+
+						fileName.replace(0, fileName.length(),
+								StringUtils.replace(fileName.toString(), FILE_EXTENSION_JRXML, FILE_EXTENSION_JASPER));
+					}
+
+					source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + classPath.toString()
+							+ ESCAPING_THE_BACKSLASH + fileName.toString());
+					dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + classPath.toString()
+							+ ESCAPING_THE_BACKSLASH + fileName.toString());
+					FileUtils.copyFile(source, dest);
+				}
+
 			} catch (IOException e) {
-			    e.printStackTrace();
+				e.printStackTrace();
 			}
 		}
-	}	
-	
-	
+	}
+
+	/**
+	 * copy boft_cf File(need Refactor)
+	 */
+	private void copyCfFile() {
+		StringBuilder fileName = new StringBuilder();
+		StringBuilder srcPath = new StringBuilder();
+		StringBuilder classPath = new StringBuilder();
+
+		StringBuilder tempSb = new StringBuilder();
+
+		for (String s : cfArrayList) {
+			fileName.delete(0, fileName.length());
+			srcPath.delete(0, srcPath.length());
+			classPath.delete(0, classPath.length());
+
+			int index = s.lastIndexOf("/");
+			int spIndex = s.lastIndexOf(" ");
+
+			fileName.append(s.substring(index + 1, spIndex).trim());
+			srcPath.append(s.substring(0, index).replace('/', '\\'));
+
+			try {
+				File source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + srcPath.toString()
+						+ ESCAPING_THE_BACKSLASH + fileName.toString());
+
+				// 目地的
+				File dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + srcPath.toString()
+						+ ESCAPING_THE_BACKSLASH + fileName.toString());
+
+				FileUtils.copyFile(source, dest);
+
+				if ((fileName.indexOf(".jrxml") > 0)) {
+					tempSb.delete(0, tempSb.length());
+					tempSb.append(fileName);
+					tempSb.replace(0, tempSb.length(),
+							StringUtils.replace(tempSb.toString(), FILE_EXTENSION_JRXML, FILE_EXTENSION_JASPER));
+
+					source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + srcPath.toString()
+							+ ESCAPING_THE_BACKSLASH + tempSb.toString());
+					dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + srcPath.toString()
+							+ ESCAPING_THE_BACKSLASH + tempSb.toString());
+
+					FileUtils.copyFile(source, dest);
+				}
+
+				if ((fileName.indexOf(".java") > 0) || (fileName.indexOf(".jrxml") > 0)) {
+					// 換到classes目錄
+					classPath.append(srcPath.toString().replaceAll("src\\\\java", "classes"));
+
+					if (fileName.indexOf(".java") > 0) {
+						fileName.replace(0, fileName.length(),
+								StringUtils.replace(fileName.toString(), FILE_EXTENSION_JAVA, FILE_EXTENSION_CLASS));
+					} else if (fileName.indexOf(".jrxml") > 0) {
+						source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + classPath.toString()
+								+ ESCAPING_THE_BACKSLASH + fileName.toString());
+						dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + classPath.toString()
+								+ ESCAPING_THE_BACKSLASH + fileName.toString());
+						FileUtils.copyFile(source, dest);
+
+						fileName.replace(0, fileName.length(),
+								StringUtils.replace(fileName.toString(), FILE_EXTENSION_JRXML, FILE_EXTENSION_JASPER));
+					}
+
+					source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + classPath.toString()
+							+ ESCAPING_THE_BACKSLASH + fileName.toString());
+					dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + classPath.toString()
+							+ ESCAPING_THE_BACKSLASH + fileName.toString());
+					FileUtils.copyFile(source, dest);
+				}
+
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	/**
+	 * copy boft_pw File(need Refactor)
+	 */
+	private void copyPwFile() {
+		StringBuilder fileName = new StringBuilder();
+		StringBuilder srcPath = new StringBuilder();
+		StringBuilder classPath = new StringBuilder();
+
+		StringBuilder tempSb = new StringBuilder();
+
+		for (String s : pwArrayList) {
+			fileName.delete(0, fileName.length());
+			srcPath.delete(0, srcPath.length());
+			classPath.delete(0, classPath.length());
+
+			int index = s.lastIndexOf("/");
+			int spIndex = s.lastIndexOf(" ");
+
+			fileName.append(s.substring(index + 1, spIndex).trim());
+			srcPath.append(s.substring(0, index).replace('/', '\\'));
+
+			try {
+				File source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + srcPath.toString()
+						+ ESCAPING_THE_BACKSLASH + fileName.toString());
+
+				// 目地的
+				File dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + srcPath.toString()
+						+ ESCAPING_THE_BACKSLASH + fileName.toString());
+
+				FileUtils.copyFile(source, dest);
+
+				if ((fileName.indexOf(".jrxml") > 0)) {
+					tempSb.delete(0, tempSb.length());
+					tempSb.append(fileName);
+					tempSb.replace(0, tempSb.length(),
+							StringUtils.replace(tempSb.toString(), FILE_EXTENSION_JRXML, FILE_EXTENSION_JASPER));
+
+					source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + srcPath.toString()
+							+ ESCAPING_THE_BACKSLASH + tempSb.toString());
+					dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + srcPath.toString()
+							+ ESCAPING_THE_BACKSLASH + tempSb.toString());
+
+					FileUtils.copyFile(source, dest);
+				}
+
+				if ((fileName.indexOf(".java") > 0) || (fileName.indexOf(".jrxml") > 0)) {
+					// 換到classes目錄
+					classPath.append(srcPath.toString().replaceAll("src\\\\java", "classes"));
+
+					if (fileName.indexOf(".java") > 0) {
+						fileName.replace(0, fileName.length(),
+								StringUtils.replace(fileName.toString(), FILE_EXTENSION_JAVA, FILE_EXTENSION_CLASS));
+					} else if (fileName.indexOf(".jrxml") > 0) {
+						source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + classPath.toString()
+								+ ESCAPING_THE_BACKSLASH + fileName.toString());
+						dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + classPath.toString()
+								+ ESCAPING_THE_BACKSLASH + fileName.toString());
+						FileUtils.copyFile(source, dest);
+
+						fileName.replace(0, fileName.length(),
+								StringUtils.replace(fileName.toString(), FILE_EXTENSION_JRXML, FILE_EXTENSION_JASPER));
+					}
+
+					source = new File(PROJECT_PATH + ESCAPING_THE_BACKSLASH + classPath.toString()
+							+ ESCAPING_THE_BACKSLASH + fileName.toString());
+					dest = new File(this.getCopyDestination() + ESCAPING_THE_BACKSLASH + classPath.toString()
+							+ ESCAPING_THE_BACKSLASH + fileName.toString());
+					FileUtils.copyFile(source, dest);
+				}
+
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
 	/**
 	 * 上傳的檔案大小
 	 * @param local
@@ -525,7 +746,19 @@ public class QuestSheetManager {
 	 * Connection
 	 * @return
 	 */
-	private final Connection getConnection() {		
+	private Connection getConnection() {		
 		return ConnectionObject.getInstance().getConnection();
+	}	
+	
+	private String getQuestionSheetNo() {
+		return questionSheetNo;
+	}
+	
+	private String getCopyDestination() {
+		return copyDestination;
+	}
+
+	private void setCopyDestination(String copyDestination) {
+		this.copyDestination = copyDestination;
 	}
 }
