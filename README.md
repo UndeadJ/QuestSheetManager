@@ -1,7 +1,8 @@
 # QuestSheetManager
 QuestSheetManager
 
-【專案程式打包工具】
+##【專案程式打包工具】##</br>
+#### 請先於【問題單管理系統】建立需求單取得 需求單編號####
 
 1.請依自身本機專案放置位置，修改 <strong>resource/config.properties</strong> 中之 <strong>PROJECT_PATH</strong> <br />
 
